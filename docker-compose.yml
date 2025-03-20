@@ -1,0 +1,152 @@
+services:
+  opensearch-node1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node1
+    environment:
+      - cluster.name=opensearch-cluster # Name the cluster
+      - node.name=opensearch-node1 # Name the node that will run in this container
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2 # Nodes to look for when discovering the cluster
+      - cluster.initial_cluster_manager_nodes=opensearch-node1 # Nodes eligibile to serve as cluster manager
+      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m" # Set min and max JVM heap sizes to at least 50% of system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true" # Disables Security plugin
+      - "gateway.auto_import_dangling_indices=true"
+      - "cluster.fault_detection.follower_check.timeout=30s"
+      - "cluster.fault_detection.follower_check.retry_count=6"
+      - "cluster.fault_detection.leader_check.timeout=30s"
+      - "cluster.fault_detection.leader_check.retry_count=6"
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
+    ports:
+      - 9200:9200 # REST API
+      - 9600:9600 # Performance Analyzer
+    networks:
+      - opensearch-net
+    restart:
+      unless-stopped
+    mem_limit: 6g
+    mem_reservation: 3g
+  
+  opensearch-node2:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node2
+    environment:
+      - cluster.name=opensearch-cluster # Name the cluster
+      - node.name=opensearch-node2 # Name the node that will run in this container
+      - node.roles=data
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2 # Nodes to look for when discovering the cluster
+      - cluster.initial_cluster_manager_nodes=opensearch-node1 # Nodes eligibile to serve as cluster manager
+      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m" # Set min and max JVM heap sizes to at least 50% of system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true" # Disables Security plugin
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data2:/usr/share/opensearch/data # Creates volume called opensearch-data2 and mounts it to the container
+    networks:
+      - opensearch-net # All of the containers will join the same Docker bridge network
+    restart:
+      unless-stopped
+  
+  opensearch-node3:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node3
+    environment:
+      - cluster.name=opensearch-cluster # Name the cluster
+      - node.name=opensearch-node3 # Name the node that will run in this container
+      - node.roles=data,ingest
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2,opensearch-node3 # Nodes to look for when discovering the cluster
+      - cluster.initial_cluster_manager_nodes=opensearch-node1 # Nodes eligibile to serve as cluster manager
+      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m" # Set min and max JVM heap sizes to at least 50% of system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true" # Disables Security plugin
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data3:/usr/share/opensearch/data # Creates volume called opensearch-data2 and mounts it to the container
+    networks:
+      - opensearch-net # All of the containers will join the same Docker bridge network
+    restart:
+      unless-stopped
+
+  opensearch-node4:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node4
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node4
+      - node.roles=ml
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2,opensearch-node3,opensearch-node4
+      - cluster.initial_cluster_manager_nodes=opensearch-node1
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+      - "DISABLE_PERFORMANCE_ANALYZER=true"
+      - "gateway.auto_import_dangling_indices=true"
+      - "plugins.neural_search.hybrid_search_disabled=false"
+      - "cluster.fault_detection.follower_check.timeout=60s"
+      - "cluster.fault_detection.follower_check.retry_count=10"
+      - "cluster.fault_detection.leader_check.timeout=60s"
+      - "cluster.fault_detection.leader_check.retry_count=10"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data4:/usr/share/opensearch/data
+    networks:
+      - opensearch-net
+    restart:
+      always
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    volumes:
+      - D:\Work\cluster\opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+    depends_on:
+      - opensearch-node1
+    networks:
+      - opensearch-net
+    restart:
+      unless-stopped
+
+volumes:
+  opensearch-data1:
+  opensearch-data2:
+  opensearch-data3:
+  opensearch-data4:
+
+networks:
+  opensearch-net:
